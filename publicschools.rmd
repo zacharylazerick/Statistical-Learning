@@ -1,0 +1,182 @@
+---
+title: "publicschools"
+output:
+  html_document: default
+  pdf_document: default
+date: '2022-05-06'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## best subset selection
+
+```{r chunk1}
+library(ISLR2)
+public <- read.csv("updatedpublicschools.csv")
+attach(public)
+public <- na.omit(public)
+```
+
+```{r chunk2}
+lm.fit = lm(X..Graduated ~ X..Economically.Disadvantaged + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs  + X..Hispanic + X..White + X..Males)
+summary(lm.fit)
+
+```
+- The residuals plot shows some curvature, thus a linear model may not be reasonable for this data. The data does appear to be heteroscedastic as indicated by the fanning of the residuals.
+- The Q-Q plot indicates that normality of the `X..Graduated` data may be not be a reasonable assumption. 
+- - The standardized residuals versus leverage plot indicate that some of the observations appear to be outliers or high leverage points.
+
+
+```{r chunk3}
+library(leaps)
+regfit.full <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, public)
+summary(regfit.full)
+
+```
+
+```{r chunk4}
+regfit.full <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, public, nvmax = 14)
+
+reg.summary <- summary(regfit.full)
+reg.summary
+
+```
+
+
+```{r chunk5}
+reg.summary$adjr2
+```
+
+
+```{r chunk6}
+par(mfrow = c(2,2))
+plot(reg.summary$rss, xlab = "Number of Variables", ylab = "RSS", type = "l")
+points(14, reg.summary$rss[14], col = "red", cex = 2, pch = 20)
+
+plot(reg.summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", type = "l")
+points(7, reg.summary$adjr2[7], col = "red", cex = 2, pch = 20)
+
+plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
+points(7, reg.summary$cp[7], col = "red", cex = 2, pch = 20)
+
+plot(reg.summary$bic, xlab = "Number of Variables",ylab = "BIC", type = "l")
+points(5, reg.summary$bic[5], col = "red", cex = 2, pch = 20)
+
+plot(reg.summary$rsq, xlab = "Number of Variables", ylab = "RSq", type = "l")
+points(14, reg.summary$rsq[14], col = "red", cex = 2, pch = 20)
+
+```
+
+```{r chunk7}
+which.max(reg.summary$adjr2)
+which.min(reg.summary$rss)
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+which.max(reg.summary$rsq)
+```
+
+
+```{r chunk8}
+plot(regfit.full, scale = "r2")
+plot(regfit.full, scale = "adjr2")
+plot(regfit.full, scale = "Cp")
+plot(regfit.full, scale = "bic")
+```
+
+```{r chunk9}
+coef(regfit.full, 7)
+```
+
+## forward & backward stepwise selection
+
+```{r chunk10}
+regfit.fwd <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, data = public,
+    nvmax = 14, method = "forward")
+summary(regfit.fwd)
+
+regfit.bwd <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, data = public,
+    nvmax = 14, method = "backward")
+summary(regfit.bwd)
+```
+
+```{r chunk11}
+coef(regfit.full, 7)
+coef(regfit.fwd, 7)
+coef(regfit.bwd, 7)
+```
+
+## VALIDATION SET APPROACH 
+
+```{r chunk12}
+set.seed(1)
+train <- sample(c(TRUE, FALSE), nrow(public), replace = TRUE)
+test <- (!train)
+
+regfit.best <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, data = public[train, ], nvmax = 14)
+
+test.mat <- model.matrix(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, data = public[test, ])
+
+val.errors <- rep(NA, 14)
+for (i in 1:14) {
+ coefi <- coef(regfit.best, id = i)
+ pred <- test.mat[, names(coefi)] %*% coefi
+ val.errors[i] <- mean((public$X..Graduated[test] - pred)^2)
+}
+```
+
+```{r chunk13}
+val.errors
+which.min(val.errors)
+coef(regfit.best, 3)
+```
+
+```{r chunk14}
+ predict.regsubsets <- function(object, newdata, id, ...) {
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object, id = id)
+  xvars <- names(coefi)
+  mat[, xvars] %*% coefi
+ }
+
+regfit.best <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, data = public, nvmax = 19)
+coef(regfit.best, 3)
+```
+## CROSS VALIDATION 
+
+```{r chunk15}
+k <- 10
+n <- nrow(public)
+set.seed(1)
+folds <- sample(rep(1:k, length = n))
+cv.errors <- matrix(NA, k, 14,
+    dimnames = list(NULL, paste(1:14)))
+```
+
+
+```{r chunk16}
+for (j in 1:k) {
+  best.fit <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females,
+       data = public[folds != j, ],
+       nvmax = 14)
+  for (i in 1:14) {
+    pred <- predict(best.fit, public[folds == j, ], id = i)
+    cv.errors[j, i] <-
+         mean((public$X..Graduated[folds == j] - pred)^2)
+   }
+ }
+
+```
+
+
+```{r chunk17}
+reg.best <- regsubsets(X..Graduated ~ X..Economically.Disadvantaged + X..First.Language.Not.English + X..English.Language.Learner + X..Students.With.Disabilities + X..High.Needs + X..African.American + X..Asian + X..Hispanic + X..White + X..Native.American + X..Native.Hawaiian..Pacific.Islander + X..Multi.Race..Non.Hispanic + X..Males + X..Females, data = public,
+    nvmax = 14)
+coef(reg.best, 7)
+summary(reg.best)
+```
+
+
+

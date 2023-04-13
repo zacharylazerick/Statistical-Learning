@@ -1,0 +1,165 @@
+---
+title: "STAT 381 Final Project"
+author: "Zachary Lazerick, Sebastian Johns, Kelly Zhou"
+date: '2022-04-30'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+
+```{r}
+library(readr)
+Income <- read.csv("income_evaluation.csv", na.strings = " ?")
+Income <- na.omit(Income)
+library(dplyr)
+attach(Income)
+Income$sex <- as.factor(Income$sex)
+Income$income <- as.factor(Income$income)
+Income$workclass <- as.factor(Income$workclass)
+Income$education <- as.factor(Income$education)
+Income$marital.status <- as.factor(Income$marital.status)
+Income$occupation <- as.factor(Income$occupation)
+Income$race <- as.factor(Income$race)
+Income$relationship <- as.factor(Income$relationship)
+Income$native.country <- as.factor(Income$native.country)
+Income$native.country <- recode(Income$native.country,
+" Cambodia" = "E-AS", " Canada" = "NA", " China" = "E-AS", " Columbia" = "SA", " Cuba" = "CA", 
+" Dominican-Republic" = "CA", " Ecuador" = "CA",
+" El-Salvador" = "CA", " England" = "EU", " France" = "EU", " Germany" = "EU", " Greece" = "EU", 
+" Guatemala" = "CA", " Haiti" = "CA",
+" Hong" = "E-AS", " Hungary" = "EU", 
+" India" = "E-AS", 
+" Iran" = "ME", 
+" Ireland" = "EU",
+" Italy" = "EU", " Jamaica" = "CA", " Japan" = "E-AS", " Laos" = "E-AS", " Mexico" = "NA",
+" Nicaragua" = "CA", " Outlying-US(Guam-USVI-etc)" = "US", 
+" Peru" = "SA",
+" Philippines" = "E-AS", " Poland" = "EU", " Portugal" = "EU", " Puerto-Rico" = "US", 
+" Scotland" = "EU", " South" = "E-AS", " Taiwan" = "E-AS", " Thailand" = "E-AS",
+" Trinadad&Tobago" = "CA", " United-States" = "US", 
+" Vietnam" = "E-AS", " Yugoslavia" = "EU",
+" Holand-Netherlands" = "EU", " Honduras" = "CA" )
+summary(Income)
+cor(age, education.num)
+cor(age,fnlwgt)
+cor(age, hours.per.week)
+cor(age,capital.gain)
+cor(age,capital.loss)
+cor(education.num,fnlwgt)
+cor(education.num,capital.gain)
+cor(education.num,capital.loss)
+cor(education.num,hours.per.week)
+cor(fnlwgt,capital.gain)
+cor(fnlwgt,capital.loss)
+cor(fnlwgt,hours.per.week)
+cor(hours.per.week,capital.gain)
+cor(hours.per.week,capital.loss)
+cor(capital.gain,capital.loss)
+
+```
+### there appears to be no correlation among the numberical variables. However, we can assume correlation between marital status and relationship status. There is also obvious correlation between educaiton and education number as well as workclass and occupation.
+
+```{r}
+library(leaps)
+regfit.full <- regsubsets(income ~ native.country + hours.per.week + sex + race + relationship + marital.status + education.num + age + workclass +fnlwgt, Income,nvmax = 12, method = "forward")
+
+reg.summary <- summary(regfit.full)
+names(reg.summary)
+
+
+
+
+reg.summary$adjr2
+
+par(mfrow = c(2,2))
+plot(reg.summary$rss, xlab = "Number of Variables", ylab = "RSS", type = "l")
+
+
+plot(reg.summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", type = "l", ylim=c(0,.35))
+
+
+plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
+
+
+plot(reg.summary$bic, xlab = "Number of Variables",ylab = "BIC", type = "l")
+
+
+plot(reg.summary$rsq, xlab = "Number of Variables", ylab = "RSq", type = "l")
+coef(regfit.full, 4)
+```
+```{r}
+reg.summary$adjr2
+reg.summary$cp
+reg.summary$bic
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+set.seed(1)
+train <- sample(30162,30162*.7)
+Income.test <- Income[-train,]
+dim(Income.test)
+income.test <-income[-train]
+glm.fit <- glm(income~age+education.num+hours.per.week+marital.status, data = Income, family = binomial,subset = train)
+glm.probs <- predict(glm.fit,Income.test,type = "response")
+glm.pred <- rep("=<50k",9049)
+glm.pred[glm.probs > .5] <- ">50k"
+table(glm.pred,income.test)
+(6311+1096)/9049
+summary(glm.fit)
+
+
+
+
+
+
+```
+
+
+
+
+
+### LDA
+```{r}
+library(MASS)
+lda.fit <- lda(income~age+hours.per.week+education.num+marital.status, data = Income, subset = train)
+lda.fit
+plot(lda.fit)
+
+
+
+
+``` 
+
+```{r}
+lda.pred <- predict(lda.fit,Income.test)
+names(lda.pred)
+lda.class <- lda.pred$class
+table(lda.class,income.test)
+mean(lda.class == income.test)
+
+
+
+```
+
+
+

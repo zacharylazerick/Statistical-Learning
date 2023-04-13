@@ -1,0 +1,60 @@
+---
+title: "STAT 381 Final Project"
+author: "Zachary Lazerick, Sebastian Johns, Kelly Zhou"
+date: '2022-04-30'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+
+```{r}
+library(readr)
+Income <- read.csv("income_evaluation.csv", na.strings = " ?")
+Income <- na.omit(Income)
+library(dplyr)
+summary(Income)
+attach(Income)
+```
+
+
+
+
+```{r}
+Income$income <- as.factor(Income$income)
+train <- sample(30162,15000)
+Income.test <- Income[-train,]
+dim(Income.test)
+income.test <-income[-train]
+glm.fit <- glm(income~age+workclass+education.num+race+sex+hours.per.week, data = Income, family = binomial,subset = train)
+glm.probs <- predict(glm.fit,Income.test,type = "response")
+glm.pred <- rep("=<50k",15162)
+glm.pred[glm.probs > .5] <- ">50k"
+table(glm.pred,income.test)
+((10599+1516)/15162)
+summary(glm.fit)
+
+
+
+
+
+```
+```{r}
+set.seed(2)
+train2 <- sample(30162,15000)
+Income.test2 <- Income[-train2,]
+dim(Income.test2)
+income.test2 <-income[-train2]
+glm.fit2 <- glm(income~age+workclass+education.num+race+sex+hours.per.week+marital.status, data = Income, family = binomial,subset = train2)
+summary(glm.fit2)
+glm.probs2 <- predict(glm.fit2,Income.test2,type = "response")
+glm.pred2 <- rep("=<50k",15162)
+glm.pred2[glm.probs2 > .5] <- ">50k"
+table(glm.pred2,income.test2)
+((10504+1975)/15162)
+```
